@@ -1,0 +1,41 @@
+# ============================================================
+#  DRONE PLAKA TAKIP SISTEMI
+#  Python 3.13+ Uyumlu - DroneKit KULLANILMAZ
+#
+#  Kurulum:
+#    pip3 install -r requirements.txt --break-system-packages
+#  veya sanal ortamda:
+#    python3 -m venv .venv && source .venv/bin/activate
+#    pip install -r requirements.txt
+# ============================================================
+
+# ── MAVLink (DroneKit yerine - Python 3.13 tam uyumlu) ──────
+pymavlink>=2.4.41
+
+# ── Web Sunucusu & WebSocket ─────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+websockets>=12.0
+python-multipart>=0.0.9
+
+# ── Goruntu Isleme ───────────────────────────────────────────
+opencv-python>=4.9.0.80
+numpy>=1.26.4
+
+# ── YOLO (Pi4 icin NCNN backend onerilir) ───────────────────
+ultralytics>=8.2.0
+
+# ── OCR ──────────────────────────────────────────────────────
+easyocr>=1.7.1
+
+# ── Test ─────────────────────────────────────────────────────
+pytest>=8.0.0
+
+# !! DRONEKIT INSTALL ETMEYIN !!
+# dronekit  <-- Python 3.10+ uyumsuz, bu projede kullanilmiyor
+
+# ── RPi Kamera (Raspberry Pi Camera Module v1/v2/v3) ────────
+# Sistem paketi olarak kurulum ZORUNLU (pip ile kurulamaz):
+#   sudo apt-get install python3-picamera2
+# NOT: Bu satiri requirements.txt ile kurmaya calismayin
+# picamera2  # <-- sistem paketi, apt ile kurulur

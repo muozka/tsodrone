@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRONE KONTROL MERKEZİ v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#030a0e;--bg2:#050f15;--panel:#081929;
+  --border:#0e3a52;--border2:#1a5a7a;
+  --cyan:#00d4ff;--cyan2:#00a8cc;--cyan3:#005577;
+  --green:#00ff88;--green2:#00cc66;
+  --red:#ff3344;--amber:#ffaa00;
+  --purple:#aa44ff;
+  --text:#c8e8f0;--text2:#7aafc0;--text3:#3d6e82;
+  --mono:'Share Tech Mono',monospace;
+  --sans:'Rajdhani',sans-serif;
+  --display:'Orbitron',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;overflow:hidden}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)}
+/* ── ROOT LAYOUT: L=270 | C=flex | R=320 ── */
+.root{display:grid;grid-template-rows:52px 1fr 26px;grid-template-columns:270px 1fr 320px;height:100vh}
+
+/* ── HEADER ── */
+.header{grid-column:1/-1;display:flex;align-items:center;gap:20px;padding:0 18px;
+  background:linear-gradient(90deg,#020d14,#051822 50%,#020d14);
+  border-bottom:1px solid var(--border);position:relative}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
+.logo{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:4px;
+  color:var(--cyan);text-shadow:0 0 12px rgba(0,212,255,.5);display:flex;align-items:center;gap:8px}
+.hstats{display:flex;gap:18px;align-items:center;font-family:var(--mono);font-size:11px}
+.hst{display:flex;align-items:center;gap:6px;color:var(--text2)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:all .3s}
+.dot.on{background:var(--green);box-shadow:0 0 8px rgba(0,255,136,.7);animation:pd 2s infinite}
+.dot.warn{background:var(--amber)}.dot.err{background:var(--red)}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.4}}
+.hclock{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:2px}
+
+/* ── FOOTER ── */
+.footer{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 14px;
+  background:#020c12;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3)}
+
+/* ── PANELS ── */
+.panel-l{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.panel-c{display:grid;grid-template-rows:1fr 180px;overflow:hidden;background:var(--bg2)}
+.panel-r{background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.pscroll{flex:1;overflow-y:auto}
+.pscroll::-webkit-scrollbar{width:3px}
+.pscroll::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* ── SECTION TITLE ── */
+.stitle{padding:8px 12px 6px;font-family:var(--display);font-size:9px;font-weight:600;
+  letter-spacing:3px;color:var(--cyan2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:7px;text-transform:uppercase;flex-shrink:0;
+  background:linear-gradient(90deg,rgba(0,168,204,.06),transparent)}
+
+/* ── TELEMETRY GRID ── */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);flex-shrink:0}
+.tgrid>*{background:var(--panel)}
+.titem{padding:9px 11px;display:flex;flex-direction:column;gap:3px}
+.tlbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text3);text-transform:uppercase}
+.tval{font-family:var(--mono);font-size:19px;color:var(--cyan);text-shadow:0 0 8px rgba(0,212,255,.5);line-height:1;transition:all .3s}
+.tunit{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.mode-badge{margin:0 12px 10px;padding:9px;border:1px solid var(--border2);
+  background:rgba(0,212,255,.03);font-family:var(--display);font-size:12px;
+  font-weight:600;letter-spacing:3px;color:var(--cyan);text-align:center;
+  position:relative;overflow:hidden;transition:all .4s}
+.mode-badge::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,.06),transparent);animation:sw 3s infinite}
+@keyframes sw{0%{left:-100%}100%{left:100%}}
+.mode-badge.armed{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.04)}
+.mode-badge.tracking{border-color:var(--amber);color:var(--amber);background:rgba(255,170,0,.04);box-shadow:0 0 20px rgba(255,170,0,.12)}
+.mode-badge.rtl{border-color:var(--red);color:var(--red)}
+.mode-badge.manual{border-color:var(--purple);color:var(--purple);background:rgba(170,68,255,.04);box-shadow:0 0 20px rgba(170,68,255,.12)}
+
+/* ── BATTERY ── */
+.bat-sec{padding:10px 12px;flex-shrink:0}
+.bat-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.bat-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text3)}
+.bat-pct{font-family:var(--mono);font-size:15px;color:var(--green)}
+.bat-bar{height:7px;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.bat-fill{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));
+  box-shadow:0 0 6px rgba(0,255,136,.4);transition:width 1s ease;border-radius:1px}
+.bat-fill.warn{background:linear-gradient(90deg,#cc8800,var(--amber))}
+.bat-fill.crit{background:linear-gradient(90deg,#cc2233,var(--red));animation:bf 1s infinite}
+@keyframes bf{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── ALT GAUGE ── */
+.agauge{padding:0 12px 10px;flex-shrink:0}
+.gauge-wrap{position:relative;height:44px;background:rgba(0,0,0,.4);border:1px solid var(--border);overflow:hidden}
+.gauge-bar{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--cyan3),var(--cyan));
+  box-shadow:2px 0 8px rgba(0,212,255,.3);transition:width 1s ease}
+.gauge-lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:19px;color:var(--cyan)}
+
+/* ── COMPASS ── */
+.cmp-wrap{padding:6px 12px 10px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.cmp-info{display:flex;flex-direction:column;gap:2px}
+.cmp-hdg{font-family:var(--mono);font-size:20px;color:var(--cyan)}
+.cmp-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px}
+
+/* ── GPS / SIGNAL ── */
+.gps-sec{padding:0 12px 10px;flex-shrink:0}
+.gps-row{display:flex;gap:6px;font-family:var(--mono);font-size:11px;margin-bottom:3px}
+.gk{color:var(--text3);width:28px;flex-shrink:0}.gv{color:var(--text)}
+.sig-sec{padding:0 12px 10px;flex-shrink:0}
+.sig-bars{display:flex;align-items:flex-end;gap:3px;height:18px}
+.sbar{flex:1;background:var(--border);border-radius:1px;transition:all .5s}
+.sbar.on{background:var(--cyan);box-shadow:0 0 4px rgba(0,212,255,.4)}
+.mtime{padding:0 12px 10px;flex-shrink:0}
+.spacer{flex:1}
+
+/* ── WS BAR ── */
+.ws-bar{padding:7px 12px;flex-shrink:0;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--text3)}
+.ws-dot{width:7px;height:7px;border-radius:50%;background:var(--red);transition:all .3s}
+.ws-dot.connected{background:var(--green);box-shadow:0 0 8px rgba(0,255,136,.6)}
+.ws-dot.connecting{background:var(--amber);animation:pd .6s infinite}
+.ws-inp{flex:1;background:rgba(0,0,0,.5);border:1px solid var(--border);
+  color:var(--cyan);font-family:var(--mono);font-size:10px;padding:4px 6px;outline:none}
+.btn-con{padding:4px 10px;border:1px solid var(--cyan2);background:transparent;
+  color:var(--cyan2);font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:1px;transition:all .2s}
+.btn-con:hover{background:rgba(0,212,255,.1)}
+
+/* ═══════════════════════════════════════════════
+   CENTER — CAMERA FEED (BÜYÜK)
+══════════════════════════════════════════════════ */
+.cam-wrap{position:relative;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
+/* Gerçek RPi kamera: <img> MJPEG stream */
+#cam-stream{width:100%;height:100%;object-fit:contain;display:block}
+/* Demo/fallback: canvas */
+#cam-canvas{position:absolute;inset:0;width:100%;height:100%;display:none}
+.cam-hud{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+.cam-hud-top{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-start}
+.cam-hud-bot{position:absolute;bottom:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-end}
+.cam-tag{background:rgba(3,10,14,.8);border:1px solid var(--border);padding:4px 9px;
+  font-family:var(--mono);font-size:10px;color:var(--text2)}
+.cam-tag span{color:var(--cyan)}
+.cam-sel{background:transparent;border:none;color:var(--cyan);font-family:var(--mono);font-size:10px;outline:none;cursor:pointer;pointer-events:auto}
+.cam-sel option{background:var(--bg2);color:var(--text)}
+.cam-rec{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--red)}
+.rec-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pd 1s infinite}
+/* Crosshair */
+.cam-cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+/* Tracking frame overlay */
+.cam-track-ov{position:absolute;inset:0;pointer-events:none;border:2px solid transparent;transition:all .3s}
+.cam-track-ov.tracking{border-color:var(--amber);box-shadow:inset 0 0 30px rgba(255,170,0,.12)}
+.cam-track-ov.detected{border-color:var(--green);box-shadow:inset 0 0 30px rgba(0,255,136,.12)}
+/* MJPEG / offline banner */
+.cam-offline{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  background:rgba(3,10,14,.92)}
+.cam-offline.hidden{display:none}
+.cam-offtxt{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:2px}
+.cam-offbtn{padding:6px 16px;border:1px solid var(--cyan2);background:transparent;color:var(--cyan2);
+  font-family:var(--display);font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .2s}
+.cam-offbtn:hover{background:rgba(0,212,255,.1)}
+
+/* ── LOG ── */
+.log-wrap{background:#020c12;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.log-scroll{flex:1;overflow-y:auto;padding:4px 12px;display:flex;flex-direction:column;gap:1px}
+.log-scroll::-webkit-scrollbar{width:3px}
+.log-scroll::-webkit-scrollbar-thumb{background:var(--border)}
+.log-entry{display:flex;gap:10px;align-items:baseline;font-family:var(--mono);font-size:11px;
+  padding:2px 0;border-bottom:1px solid rgba(14,58,82,.2);animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+.lt{color:var(--text3);flex-shrink:0}.ll{flex-shrink:0;width:50px;font-weight:500}
+.ll.INFO{color:var(--cyan2)}.ll.SUCCESS{color:var(--green)}.ll.WARN{color:var(--amber)}.ll.ERROR{color:var(--red)}
+.lm{color:var(--text)}
+
+/* ═══════════════════════════════════════════════
+   RIGHT PANEL SECTIONS
+══════════════════════════════════════════════════ */
+
+/* ── MINI MAP ── */
+.map-wrap{position:relative;background:var(--bg2);flex-shrink:0;height:220px;overflow:hidden}
+.map-ov{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:6px;align-items:flex-start;pointer-events:none}
+.map-tag{background:rgba(3,10,14,.85);border:1px solid var(--border);padding:3px 7px;
+  font-family:var(--mono);font-size:9px;color:var(--text2)}
+.map-tag span{color:var(--cyan)}
+.zoom-btns{position:absolute;bottom:8px;right:8px;display:flex;flex-direction:column;gap:3px}
+.zoom-btn{width:24px;height:24px;background:rgba(3,10,14,.85);border:1px solid var(--border);
+  color:var(--cyan2);cursor:pointer;font-family:var(--mono);font-size:14px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.zoom-btn:hover{background:rgba(0,212,255,.1)}
+
+/* ── FLIGHT CONTROLS ── */
+.ctrl-sec{padding:10px 12px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.btn{padding:8px 6px;border:1px solid;background:transparent;cursor:pointer;
+  font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:2px;
+  text-transform:uppercase;transition:all .2s;position:relative;overflow:hidden}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn::after{content:'';position:absolute;inset:0;background:currentColor;opacity:0;transition:opacity .2s}
+.btn:not(:disabled):hover::after{opacity:.08}.btn:not(:disabled):active::after{opacity:.18}
+.btn-arm{border-color:var(--green);color:var(--green)}
+.btn-dis{border-color:var(--red);color:var(--red)}
+.btn-rtl{border-color:var(--amber);color:var(--amber)}
+.btn-land{border-color:var(--cyan2);color:var(--cyan2)}
+.btn-full{grid-column:1/-1}
+
+/* ── HEDEF ── */
+.plate-sec{padding:0 12px 10px;flex-shrink:0}
+.plate-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text3);margin-bottom:5px;display:block}
+.plate-row{display:flex;gap:5px}
+.plate-inp{flex:1;background:rgba(0,0,0,.5);border:1px solid var(--border);
+  color:var(--cyan);font-family:var(--mono);font-size:13px;letter-spacing:3px;
+  padding:7px 9px;text-transform:uppercase;outline:none;transition:border-color .2s}
+.plate-inp:focus{border-color:var(--cyan2)}
+.btn-lock{padding:7px 11px;border:1px solid var(--cyan);background:transparent;
+  color:var(--cyan);font-family:var(--display);font-size:9px;letter-spacing:2px;
+  cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-lock:hover{background:rgba(0,212,255,.1)}
+.tgt-disp{margin:0 12px 10px;border:1px solid var(--border);padding:9px 11px;background:rgba(0,0,0,.3);flex-shrink:0}
+.tgt-row{display:flex;justify-content:space-between;align-items:center}
+.tgt-key{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px}
+.tgt-plate{font-family:var(--mono);font-size:17px;color:var(--amber);letter-spacing:4px}
+.tgt-plate.none{color:var(--text3);font-size:12px;letter-spacing:1px}
+.tgt-clear{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;transition:color .2s}
+.tgt-clear:hover{color:var(--red)}
+.det-row{margin-top:5px;padding-top:5px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.det-lbl{font-family:var(--mono);font-size:9px;color:var(--text3)}
+.det-plate{font-family:var(--mono);font-size:13px;color:var(--green);animation:bd .5s infinite}
+.det-plate.none{color:var(--text3);animation:none;font-size:11px}
+@keyframes bd{0%,100%{opacity:1}50%{opacity:.7}}
+.det-conf{font-family:var(--mono);font-size:11px;color:var(--text2)}
+
+/* ═══════════════════════════════════════════════
+   MANUEL KONTROL BÖLÜMÜ
+══════════════════════════════════════════════════ */
+.manual-sec{padding:10px 12px;flex-shrink:0;border-top:1px solid var(--border)}
+
+/* Mod toggle */
+.manual-toggle{display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border)}
+.mtog-btn{flex:1;padding:6px;background:transparent;border:none;cursor:pointer;
+  font-family:var(--display);font-size:9px;letter-spacing:2px;color:var(--text3);transition:all .2s;text-transform:uppercase}
+.mtog-btn.active{background:rgba(170,68,255,.15);color:var(--purple);box-shadow:inset 0 0 12px rgba(170,68,255,.1)}
+.mtog-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.03)}
+
+.manual-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:start}
+
+/* Joystick pad */
+.jpad{display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);gap:3px;justify-content:center}
+.jbtn{width:38px;height:38px;border:1px solid var(--border);background:rgba(0,0,0,.4);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:16px;transition:all .15s;border-radius:3px;user-select:none}
+.jbtn:hover{border-color:var(--purple);color:var(--purple);background:rgba(170,68,255,.08)}
+.jbtn:active,.jbtn.pressed{border-color:var(--purple);color:var(--purple);
+  background:rgba(170,68,255,.2);box-shadow:0 0 12px rgba(170,68,255,.3)}
+.jbtn-center{border-color:var(--border2);color:var(--text3);font-size:10px;
+  font-family:var(--mono);letter-spacing:1px}
+.jbtn-center:hover{border-color:var(--red);color:var(--red);background:rgba(255,51,68,.08)}
+.jbtn-center:active{background:rgba(255,51,68,.2)}
+.jbtn-empty{border:none;background:transparent;cursor:default}
+
+/* Alt/Yaw controls */
+.man-side{display:flex;flex-direction:column;gap:4px}
+.man-side-lbl{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;text-align:center;margin-bottom:2px}
+.jbtn-v{width:38px;height:30px;border:1px solid var(--border);background:rgba(0,0,0,.4);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:14px;transition:all .15s;border-radius:3px;user-select:none}
+.jbtn-v:hover{border-color:var(--cyan2);color:var(--cyan);background:rgba(0,212,255,.08)}
+.jbtn-v:active,.jbtn-v.pressed{background:rgba(0,212,255,.2);box-shadow:0 0 10px rgba(0,212,255,.3)}
+
+/* Speed slider */
+.spd-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.spd-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap}
+.spd-val{font-family:var(--mono);font-size:11px;color:var(--purple);width:32px;text-align:right;white-space:nowrap}
+input[type=range].spd-slider{flex:1;appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type=range].spd-slider::-webkit-slider-thumb{appearance:none;width:13px;height:13px;
+  border-radius:50%;background:var(--purple);cursor:pointer;box-shadow:0 0 6px rgba(170,68,255,.5)}
+
+/* Vec indicator */
+.vec-disp{margin-top:8px;display:flex;align-items:center;gap:8px;padding:6px 8px;
+  border:1px solid var(--border);background:rgba(0,0,0,.3)}
+.vec-canvas-wrap{position:relative;width:50px;height:50px}
+.vec-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.6}
+.vec-val{color:var(--purple)}
+
+/* KB hint */
+.kb-hint{margin-top:7px;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.kh{font-family:var(--mono);font-size:9px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.kbadge{display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border:1px solid var(--border);background:rgba(0,0,0,.4);
+  font-size:9px;color:var(--text2);border-radius:2px;flex-shrink:0}
+
+/* ── HISTORY ── */
+.hist-sec{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.hist-scroll{flex:1;overflow-y:auto;padding:5px}
+.hist-scroll::-webkit-scrollbar{width:3px}
+.hist-scroll::-webkit-scrollbar-thumb{background:var(--border)}
+.hist-item{padding:5px 9px;margin-bottom:3px;border:1px solid var(--border);
+  background:rgba(0,0,0,.3);border-left:3px solid var(--amber);animation:fi .4s ease}
+.hist-plate{font-family:var(--mono);font-size:13px;color:var(--amber);letter-spacing:3px}
+.hist-meta{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px}
+.hist-conf{color:var(--green)}
+
+/* ── TOAST ── */
+.toast-c{position:fixed;top:60px;right:16px;z-index:1000;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{padding:9px 15px;border:1px solid;background:rgba(3,10,14,.95);backdrop-filter:blur(8px);
+  font-family:var(--mono);font-size:12px;max-width:300px;
+  animation:tsi .3s ease,tfo .5s ease 3.5s forwards}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.warn{border-color:var(--amber);color:var(--amber)}
+.toast.error{border-color:var(--red);color:var(--red)}
+@keyframes tsi{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tfo{from{opacity:1}to{opacity:0;transform:translateX(20px)}}
+</style>
+</head>
+<body>
+<div class="root">
+
+<!-- ════ HEADER ════ -->
+<header class="header">
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" stroke="#00d4ff" stroke-width="1.5" opacity=".4"/>
+      <circle cx="16" cy="16" r="8" stroke="#00d4ff" stroke-width="1.5" opacity=".7"/>
+      <circle cx="16" cy="16" r="2.5" fill="#00d4ff"/>
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#00d4ff" stroke-width="1.5"/>
+      <line x1="16" y1="24" x2="16" y2="30" stroke="#00d4ff" stroke-width="1.5"/>
+      <line x1="2" y1="16" x2="8" y2="16" stroke="#00d4ff" stroke-width="1.5"/>
+      <line x1="24" y1="16" x2="30" y2="16" stroke="#00d4ff" stroke-width="1.5"/>
+    </svg>
+    DRONE·GCS
+  </div>
+  <div class="hstats">
+    <div class="hst"><div class="dot" id="ws-hdr-dot"></div><span id="ws-hdr-txt">BAĞLANTI YOK</span></div>
+    <div class="hst"><div class="dot on"></div><span>GPS: <span id="hdr-gps">---</span></span></div>
+    <div class="hst"><div class="dot" id="arm-dot"></div><span id="arm-txt">DISARMED</span></div>
+    <div class="hst"><span style="color:var(--text2)">BAT:</span> <span id="hdr-bat" style="color:var(--green)">--%</span></div>
+    <div class="hst"><div class="dot" id="man-dot" style="background:var(--purple);display:none"></div><span id="man-hdr" style="color:var(--purple);display:none">MANUEL</span></div>
+  </div>
+  <div class="hclock" id="clock">--:--:--</div>
+</header>
+
+<!-- ════ LEFT — TELEMETRI ════ -->
+<aside class="panel-l">
+  <div class="stitle">📡 Telemetri</div>
+  <div class="pscroll">
+    <div class="mode-badge" id="mode-badge">● BEKLEMEDE</div>
+    <div class="tgrid">
+      <div class="titem"><div class="tlbl">İRTİFA</div><div><span class="tval" id="t-alt">0.0</span><span class="tunit"> m</span></div></div>
+      <div class="titem"><div class="tlbl">HIZ</div><div><span class="tval" id="t-spd">0.0</span><span class="tunit"> m/s</span></div></div>
+      <div class="titem"><div class="tlbl">HEADING</div><div><span class="tval" id="t-hdg">0</span><span class="tunit"> °</span></div></div>
+      <div class="titem"><div class="tlbl">UYDU</div><div><span class="tval" id="t-sat" style="color:var(--green)">--</span></div></div>
+    </div>
+    <div class="agauge" style="padding:12px">
+      <div class="tlbl" style="margin-bottom:4px">İRTİFA (MAX 50m)</div>
+      <div class="gauge-wrap"><div class="gauge-bar" id="alt-bar"></div>
+        <div class="gauge-lbl"><span id="alt-lbl">0.0</span><span class="tunit">m</span></div></div>
+    </div>
+    <div class="cmp-wrap">
+      <svg width="58" height="58" viewBox="0 0 60 60">
+        <circle cx="30" cy="30" r="28" stroke="#0e3a52" stroke-width="1.5" fill="none"/>
+        <circle cx="30" cy="30" r="20" stroke="#1a5a7a" stroke-width="1" fill="none"/>
+        <text x="30" y="10" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00d4ff">N</text>
+        <text x="30" y="55" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#3d6e82">S</text>
+        <text x="8"  y="33" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#3d6e82">W</text>
+        <text x="53" y="33" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#3d6e82">E</text>
+        <g id="cmp-needle" style="transform-origin:30px 30px">
+          <polygon points="30,10 27,30 30,26 33,30" fill="#00d4ff" opacity=".9"/>
+          <polygon points="30,50 27,30 30,34 33,30" fill="#3d6e82"/>
+        </g>
+      </svg>
+      <div class="cmp-info">
+        <div class="cmp-sub">HEADING</div>
+        <div class="cmp-hdg"><span id="hdg-val">000</span>°</div>
+        <div class="cmp-sub" id="hdg-dir">---</div>
+      </div>
+    </div>
+    <div class="bat-sec">
+      <div class="bat-hdr"><div class="bat-lbl">PİL</div><div class="bat-pct" id="bat-pct">--%</div></div>
+      <div class="bat-bar"><div class="bat-fill" id="bat-bar" style="width:0%"></div></div>
+    </div>
+    <div class="gps-sec">
+      <div class="stitle" style="margin:0 0 6px">GPS</div>
+      <div class="gps-row"><span class="gk">LAT</span><span class="gv" id="gps-lat">---.------</span></div>
+      <div class="gps-row"><span class="gk">LON</span><span class="gv" id="gps-lon">---.------</span></div>
+      <div class="gps-row"><span class="gk">FIX</span><span class="gv" id="gps-fix">---</span></div>
+    </div>
+    <div class="sig-sec">
+      <div class="tlbl" style="margin-bottom:4px">RF SİNYAL</div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div class="sig-bars" id="sig-bars">
+          <div class="sbar" style="height:25%"></div><div class="sbar" style="height:40%"></div>
+          <div class="sbar" style="height:55%"></div><div class="sbar" style="height:70%"></div>
+          <div class="sbar" style="height:85%"></div><div class="sbar" style="height:100%"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--cyan)" id="sig-val">--%</span>
+      </div>
+    </div>
+    <div class="mtime">
+      <div class="tlbl" style="margin-bottom:3px">GÖREV SÜRESİ</div>
+      <div class="tval" style="font-size:21px" id="mtime">00:00</div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+  <div class="ws-bar">
+    <div class="ws-dot" id="ws-dot"></div>
+    <input class="ws-inp" id="ws-url" value="ws://localhost:8765/ws">
+    <button class="btn-con" id="btn-con" onclick="toggleConnect()">BAĞLAN</button>
+  </div>
+</aside>
+
+<!-- ════ CENTER — KAMERA (BÜYÜK) + LOG ════ -->
+<main class="panel-c">
+  <!-- KAMERA ALANI -->
+  <div class="cam-wrap" id="cam-wrap">
+    <!-- Gerçek RPi Kamera: MJPEG stream -->
+    <img id="cam-stream" src="" alt="" onerror="camError()" onload="camLoaded()" style="display:none">
+    <!-- Demo/fallback canvas -->
+    <canvas id="cam-canvas"></canvas>
+
+    <!-- HUD Overlay -->
+    <div class="cam-hud">
+      <div class="cam-hud-top">
+        <div class="cam-tag">
+          <span id="cam-mode-tag">DEMO</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div class="cam-tag"><span id="cam-fps">30</span> FPS</div>
+          <div class="cam-tag">
+            <select id="res-select" class="cam-sel" onchange="changeResolution()">
+              <option value="640x480">640×480</option>
+              <option value="1280x720">1280×720</option>
+              <option value="1920x1080">1920×1080</option>
+              <option value="2304x1296">2304×1296 (HDR)</option>
+            </select>
+          </div>
+        </div>
+        <div class="cam-rec"><div class="rec-dot"></div> REC</div>
+      </div>
+      <div class="cam-hud-bot">
+        <div class="cam-tag">LAT <span id="map-lat">---</span></div>
+        <div class="cam-tag">LON <span id="map-lon">---</span></div>
+        <div class="cam-tag" id="cam-mode-disp" style="color:var(--cyan)">---</div>
+      </div>
+    </div>
+
+    <!-- Crosshair (merkez) -->
+    <div class="cam-cross">
+      <svg width="40" height="40" viewBox="0 0 40 40" style="opacity:.3">
+        <line x1="20" y1="0" x2="20" y2="14" stroke="#00d4ff" stroke-width="1"/>
+        <line x1="20" y1="26" x2="20" y2="40" stroke="#00d4ff" stroke-width="1"/>
+        <line x1="0" y1="20" x2="14" y2="20" stroke="#00d4ff" stroke-width="1"/>
+        <line x1="26" y1="20" x2="40" y2="20" stroke="#00d4ff" stroke-width="1"/>
+        <circle cx="20" cy="20" r="3" fill="none" stroke="#00d4ff" stroke-width="1"/>
+      </svg>
+    </div>
+
+    <!-- Takip overlay -->
+    <div class="cam-track-ov" id="cam-track-ov"></div>
+
+    <!-- Offline banner -->
+    <div class="cam-offline" id="cam-offline">
+      <svg width="48" height="48" viewBox="0 0 48 48" style="opacity:.3">
+        <rect x="4" y="10" width="40" height="28" rx="3" stroke="#00d4ff" stroke-width="1.5" fill="none"/>
+        <circle cx="24" cy="24" r="7" stroke="#00d4ff" stroke-width="1.5" fill="none"/>
+        <circle cx="24" cy="24" r="2.5" fill="#00d4ff"/>
+      </svg>
+      <div class="cam-offtxt">KAMERA AKIŞI YOK</div>
+      <div class="cam-offtxt" style="font-size:9px">Sunucu: python3 src/main.py --demo</div>
+      <button class="cam-offbtn" onclick="retryCam()">YENİDEN DENE</button>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="log-wrap">
+    <div class="stitle">📋 Sistem Kayıtları
+      <span id="log-mode-badge" style="margin-left:6px;font-size:8px;color:var(--text3)"></span>
+      <button onclick="clearLog()" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-family:var(--mono);font-size:9px">TEMİZLE</button>
+    </div>
+    <div class="log-scroll" id="log-scroll"></div>
+  </div>
+</main>
+
+<!-- ════ RIGHT PANEL ════ -->
+<aside class="panel-r">
+  <div class="pscroll">
+
+    <!-- MİNİ HARİTA -->
+    <div class="stitle">🗺 Radar Haritası
+      <div class="zoom-btns" style="position:static;flex-direction:row;margin-left:auto">
+        <button class="zoom-btn" onclick="zoom(1.25)" style="width:22px;height:22px;font-size:13px">+</button>
+        <button class="zoom-btn" onclick="zoom(0.8)"  style="width:22px;height:22px;font-size:13px">−</button>
+      </div>
+    </div>
+    <div class="map-wrap">
+      <canvas id="map-canvas"></canvas>
+      <div class="map-ov">
+        <div class="map-tag"><span id="map-mode">---</span></div>
+      </div>
+    </div>
+
+    <!-- UÇUŞ KONTROLLERİ -->
+    <div class="stitle">🚀 Uçuş Kontrol</div>
+    <div class="ctrl-sec">
+      <div class="btn-row">
+        <button class="btn btn-arm"  id="btn-arm" onclick="sendCmd('arm')">ARM</button>
+        <button class="btn btn-dis"  id="btn-dis" onclick="sendCmd('disarm')" disabled>DISARM</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-rtl"  onclick="sendCmd('rtl')">RTL</button>
+        <button class="btn btn-land" onclick="sendCmd('land')">LAND</button>
+      </div>
+      <button class="btn btn-arm btn-full" onclick="sendCmd('takeoff')">⬆ TAKEOFF</button>
+    </div>
+
+    <!-- MOTOR TEST -->
+    <div class="stitle">⚙ Motor Test</div>
+    <div class="ctrl-sec" style="padding:8px 12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text3);min-width:32px">GÜÇ</span>
+        <input type="range" id="mtest-pwr" min="5" max="50" value="15" step="5"
+               style="flex:1;accent-color:var(--amber)" oninput="document.getElementById('mtest-val').textContent=this.value+'%'">
+        <span id="mtest-val" style="font-family:var(--mono);font-size:11px;color:var(--amber);min-width:30px">15%</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-land" onclick="motorTest()" style="border-color:var(--amber);color:var(--amber)">🔄 MOTOR</button>
+        <button class="btn btn-land" onclick="rcThrottle()" style="border-color:#00ff88;color:#00ff88">⚡ RC THR</button>
+      </div>
+      <button class="btn btn-dis btn-full" onclick="rcRelease()" style="margin-top:4px">■ DURDUR</button>
+    </div>
+
+    <!-- HEDEFLEME -->
+    <div class="stitle">🔍 Hedef Takibi</div>
+    <div class="plate-sec">
+      <span class="plate-lbl">HEDEF TAKİP KODU</span>
+      <div class="plate-row">
+        <input class="plate-inp" id="plate-inp" placeholder="ARAC-01" maxlength="12"
+               onkeydown="if(event.key==='Enter')lockPlate()">
+        <button class="btn-lock" onclick="lockPlate()">KİLİTLE</button>
+      </div>
+    </div>
+    <div class="tgt-disp">
+      <div class="tgt-row">
+        <span class="tgt-key">HEDEF SEÇİMİ</span>
+        <button class="tgt-clear" onclick="clearTarget()">×</button>
+      </div>
+      <div class="tgt-plate none" id="tgt-plate">— YOK —</div>
+      <div class="det-row">
+        <span class="det-lbl">TESPİT</span>
+        <span class="det-plate none" id="det-plate">— —</span>
+        <span class="det-conf" id="det-conf"></span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MANUEL KONTROL — YENİ BÖLÜM
+    ══════════════════════════════════════════ -->
+    <div class="stitle" style="color:var(--purple);background:linear-gradient(90deg,rgba(170,68,255,.08),transparent)">
+      🕹 Manuel Kontrol
+      <span style="margin-left:auto;font-size:8px;color:var(--text3)" id="man-status-lbl">KAPALI</span>
+    </div>
+    <div class="manual-sec">
+      <!-- Mod seç -->
+      <div class="manual-toggle">
+        <button class="mtog-btn" id="mtog-auto" onclick="setManualMode(false)">OTOMATİK</button>
+        <button class="mtog-btn" id="mtog-man"  onclick="setManualMode(true)">MANUEL</button>
+      </div>
+
+      <div id="man-controls">
+        <!-- Joystick + Yükseklik + Yaw -->
+        <div class="manual-grid">
+          <!-- Sol: Yaw -->
+          <div class="man-side">
+            <div class="man-side-lbl">YAW</div>
+            <button class="jbtn-v" id="jyaw-l" onmousedown="manPress('yaw_left')"  onmouseup="manRelease()" ontouchstart="manPress('yaw_left')" ontouchend="manRelease()">↺</button>
+            <button class="jbtn-v" id="jyaw-r" onmousedown="manPress('yaw_right')" onmouseup="manRelease()" ontouchstart="manPress('yaw_right')" ontouchend="manRelease()">↻</button>
+          </div>
+
+          <!-- Orta: Yön Joystick -->
+          <div>
+            <div class="man-side-lbl" style="text-align:center">HAREKET</div>
+            <div class="jpad">
+              <div class="jbtn jbtn-empty"></div>
+              <button class="jbtn" id="jfwd"  onmousedown="manPress('forward')"  onmouseup="manRelease()" ontouchstart="manPress('forward')"  ontouchend="manRelease()">▲</button>
+              <div class="jbtn jbtn-empty"></div>
+
+              <button class="jbtn" id="jleft" onmousedown="manPress('left')"     onmouseup="manRelease()" ontouchstart="manPress('left')"     ontouchend="manRelease()">◀</button>
+              <button class="jbtn jbtn-center" id="jhover" onclick="manStop()">HOVER</button>
+              <button class="jbtn" id="jright" onmousedown="manPress('right')"    onmouseup="manRelease()" ontouchstart="manPress('right')"    ontouchend="manRelease()">▶</button>
+
+              <div class="jbtn jbtn-empty"></div>
+              <button class="jbtn" id="jback"  onmousedown="manPress('backward')" onmouseup="manRelease()" ontouchstart="manPress('backward')" ontouchend="manRelease()">▼</button>
+              <div class="jbtn jbtn-empty"></div>
+            </div>
+          </div>
+
+          <!-- Sağ: İrtifa -->
+          <div class="man-side">
+            <div class="man-side-lbl">İRTİFA</div>
+            <button class="jbtn-v" id="jup"   onmousedown="manPress('up')"   onmouseup="manRelease()" ontouchstart="manPress('up')"   ontouchend="manRelease()">▲</button>
+            <button class="jbtn-v" id="jdown" onmousedown="manPress('down')" onmouseup="manRelease()" ontouchstart="manPress('down')" ontouchend="manRelease()">▼</button>
+          </div>
+        </div>
+
+        <!-- Hız Ayarı -->
+        <div class="spd-row">
+          <span class="spd-lbl">HIZ</span>
+          <input type="range" class="spd-slider" id="spd-slider" min="1" max="8" step="0.5" value="3" oninput="updateSpd()">
+          <span class="spd-val" id="spd-val">3.0 m/s</span>
+        </div>
+
+        <!-- Hız Vektör Göstergesi -->
+        <div class="vec-disp">
+          <div class="vec-canvas-wrap">
+            <canvas id="vec-canvas" width="50" height="50"></canvas>
+          </div>
+          <div class="vec-lbl">
+            <div>VX: <span class="vec-val" id="vec-vx">0.0</span></div>
+            <div>VY: <span class="vec-val" id="vec-vy">0.0</span></div>
+            <div>VZ: <span class="vec-val" id="vec-vz">0.0</span></div>
+            <div>YAW: <span class="vec-val" id="vec-yaw">---</span></div>
+          </div>
+        </div>
+
+        <!-- Klavye Kısayolları -->
+        <div class="kb-hint">
+          <div class="kh"><span class="kbadge">W</span><span style="color:var(--text2)">İleri</span></div>
+          <div class="kh"><span class="kbadge">S</span><span style="color:var(--text2)">Geri</span></div>
+          <div class="kh"><span class="kbadge">A</span><span style="color:var(--text2)">Sol</span></div>
+          <div class="kh"><span class="kbadge">D</span><span style="color:var(--text2)">Sağ</span></div>
+          <div class="kh"><span class="kbadge">Q</span><span style="color:var(--text2)">Yaw ↺</span></div>
+          <div class="kh"><span class="kbadge">E</span><span style="color:var(--text2)">Yaw ↻</span></div>
+          <div class="kh"><span class="kbadge">R</span><span style="color:var(--text2)">Yukarı</span></div>
+          <div class="kh"><span class="kbadge">F</span><span style="color:var(--text2)">Aşağı</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TESPİT GEÇMİŞİ -->
+    <div class="stitle">⏱ Tespit Geçmişi</div>
+    <div class="hist-sec"><div class="hist-scroll" id="hist-scroll"></div></div>
+  </div><!-- /pscroll -->
+</aside>
+
+<footer class="footer">
+  <span>DRONE-GCS v3.0</span><span>|</span>
+  <span style="color:var(--cyan2)">Python 3.13 · pymavlink · picamera2 · FastAPI</span>
+  <span id="cam-src-lbl" style="color:var(--text3)">| CAM: demo</span>
+  <span style="margin-left:auto" id="ping-lbl">PING: ---ms</span>
+</footer>
+</div>
+<div class="toast-c" id="toast-c"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+let ws = null;
+let state = {
+  lat:41.6781,lon:27.435,alt:0,heading:0,speed:0,battery:95,
+  mode:"BEKLEMEDE",armed:false,gps_fix:0,satellites:0,signal:0,
+  target_plate:null,detected_plate:null,plate_conf:0,tracking:false,mission_time:0
+};
+let mapScale=1, mapCenter={lat:41.6781,lon:27.435}, trail=[];
+let lastDetected=null, lastPing=0, simT=0;
+
+// Manuel kontrol state
+let manualMode = false;
+let manActive  = null;   // aktif yön
+let manSpeed   = 3.0;
+let manVx=0, manVy=0, manVz=0, manYawRate=0;
+let manInterval = null;
+
+// ── CLOCK ──────────────────────────────────────────────────────
+setInterval(()=>{ document.getElementById("clock").textContent = new Date().toLocaleTimeString("tr-TR"); }, 1000);
+
+// ── AUTO WS URL ────────────────────────────────────────────────
+(function() {
+  const wsInput = document.getElementById("ws-url");
+  if (window.location.host) {
+    wsInput.value = `ws://${window.location.host}/ws`;
+  }
+})();
+
+// Sayfa yüklendiğinde otomatik bağlan
+window.addEventListener('load', () => {
+    setTimeout(connectWS, 1000);
+});
+
+
+// ══════════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ══════════════════════════════════════════════════════════════
+function toggleConnect(){ ws && ws.readyState===1 ? ws.close() : connectWS(); }
+
+function connectWS(){
+  const url = document.getElementById("ws-url").value.trim();
+  setWS("connecting");
+  try { 
+    ws = new WebSocket(url); 
+  } catch(e) { 
+    console.error("WS Olusturma Hatasi:", e);
+    setWS("disconnected"); 
+    setTimeout(connectWS, 3000);
+    return; 
+  }
+  ws.onopen = ()=>{
+    setWS("connected");
+    toast("Bağlantı kuruldu","success");
+    document.getElementById("btn-con").textContent = "KES";
+    lastPing = Date.now(); ws.send(JSON.stringify({action:"ping"}));
+    // Kamera stream'i dene
+    tryCamStream();
+  };
+  ws.onmessage = e=>{
+    const d = JSON.parse(e.data);
+    if(d.type==="telemetry") handleTele(d);
+    else if(d.type==="log") addLog(d.time, d.level, d.msg);
+    else if(d.type==="pong") document.getElementById("ping-lbl").textContent=`PING: ${Date.now()-lastPing}ms`;
+  };
+  ws.onclose = ()=>{
+    setWS("disconnected");
+    document.getElementById("btn-con").textContent = "BAĞLAN";
+    // Eğer kullanıcı manuel kapatmadıysa (ws null değilse örneğin) veya her zaman bağlanmak istiyorsak
+    setTimeout(connectWS, 3000);
+  };
+  ws.onerror = (err)=> {
+    setWS("disconnected");
+    console.error("WS Hatası:", err);
+  };
+}
+
+function setWS(s){
+  document.getElementById("ws-dot").className="ws-dot "+(s==="connected"?"connected":s==="connecting"?"connecting":"");
+  document.getElementById("ws-hdr-dot").className="dot "+(s==="connected"?"on":s==="connecting"?"warn":"");
+  document.getElementById("ws-hdr-txt").textContent=s==="connected"?"BAĞLI":s==="connecting"?"BAĞLANIYOR...":"BAĞLANTI YOK";
+}
+
+function sendCmd(a, ex={}){
+  if(!ws || ws.readyState!==1){ toast("WebSocket bağlantısı yok!","error"); return; }
+  ws.send(JSON.stringify({action:a,...ex}));
+  addLog(new Date().toLocaleTimeString("tr-TR"),"INFO",`Komut: ${a}`);
+}
+
+function lockPlate(){
+  const p = document.getElementById("plate-inp").value.trim().toUpperCase();
+  if(!p) return;
+  sendCmd("set_target",{plate:p});
+  document.getElementById("plate-inp").value="";
+  toast(`Hedef kilitlendi: ${p}`,"success");
+}
+function clearTarget(){ sendCmd("clear_target"); }
+
+function changeResolution(){
+  const res = document.getElementById("res-select").value;
+  const [w, h] = res.split('x').map(Number);
+  sendCmd("change_res", {width: w, height: h});
+  toast(`Çözünürlük güncelleniyor: ${res}`, "info");
+}
+
+function motorTest(){
+  const pwr = parseInt(document.getElementById("mtest-pwr").value);
+  sendCmd("motor_test", {throttle: pwr, duration: 3, motor_id: 0});
+  toast(`Motor test: %${pwr} güç, 3 saniye`, "warn");
+}
+
+function rcThrottle(){
+  const pwr = parseInt(document.getElementById("mtest-pwr").value);
+  const pwm = 1000 + Math.round((pwr / 100) * 1000);
+  sendCmd("rc_throttle", {pwm: pwm});
+  toast(`RC Throttle: PWM=${pwm} — DURDUR'a basmayi unutma!`, "warn");
+}
+
+function rcRelease(){
+  sendCmd("rc_release");
+  toast("RC Override serbest bırakıldı", "info");
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TELEMETRY
+// ══════════════════════════════════════════════════════════════
+function handleTele(d){
+  const prev = {...state};
+  Object.assign(state, d);
+
+  // Header
+  document.getElementById("hdr-gps").textContent = `${d.satellites} SAT`;
+  document.getElementById("cam-fps").textContent = d.cam_fps || 30;
+  const ad=document.getElementById("arm-dot"), at=document.getElementById("arm-txt");
+  ad.className="dot"+(d.armed?" on":""); at.textContent=d.armed?"ARMED":"DISARMED";
+  const bh=document.getElementById("hdr-bat");
+  bh.textContent=`${d.battery.toFixed(0)}%`;
+  bh.style.color=d.battery<20?"var(--red)":d.battery<40?"var(--amber)":"var(--green)";
+
+  // Tele values
+  document.getElementById("t-alt").textContent=d.alt.toFixed(1);
+  document.getElementById("t-spd").textContent=d.speed.toFixed(1);
+  document.getElementById("t-hdg").textContent=Math.round(d.heading);
+  document.getElementById("t-sat").textContent=d.satellites;
+
+  // Alt gauge
+  document.getElementById("alt-bar").style.width=Math.min(100,(d.alt/50)*100)+"%";
+  document.getElementById("alt-lbl").textContent=d.alt.toFixed(1);
+
+  // Compass
+  document.getElementById("cmp-needle").style.transform=`rotate(${d.heading}deg)`;
+  document.getElementById("hdg-val").textContent=String(Math.round(d.heading)).padStart(3,"0");
+  document.getElementById("hdg-dir").textContent=hdgDir(d.heading);
+
+  // Battery
+  document.getElementById("bat-pct").textContent=`${d.battery.toFixed(1)}%`;
+  const bb=document.getElementById("bat-bar");
+  bb.style.width=d.battery+"%";
+  bb.className="bat-fill"+(d.battery<20?" crit":d.battery<40?" warn":"");
+  if(d.battery<20 && prev.battery>=20) toast("⚠ KRİTİK PİL!","error");
+
+  // GPS
+  document.getElementById("gps-lat").textContent=d.lat.toFixed(6);
+  document.getElementById("gps-lon").textContent=d.lon.toFixed(6);
+  document.getElementById("gps-fix").textContent=["NO FIX","NO FIX","2D FIX","3D FIX","3D DGPS"][d.gps_fix]||"--";
+  document.getElementById("map-lat").textContent=d.lat.toFixed(6);
+  document.getElementById("map-lon").textContent=d.lon.toFixed(6);
+
+  // Signal
+  document.getElementById("sig-val").textContent=`${d.signal}%`;
+  const bars=document.querySelectorAll(".sbar"), act=Math.round((d.signal/100)*bars.length);
+  bars.forEach((b,i)=>b.classList.toggle("on",i<act));
+
+  // Mission time
+  const mt=d.mission_time, mm=String(Math.floor(mt/60)).padStart(2,"0"), ss=String(mt%60).padStart(2,"0");
+  document.getElementById("mtime").textContent=`${mm}:${ss}`;
+
+  // Mode badge
+  const mb=document.getElementById("mode-badge");
+  const isManual=manualMode;
+  mb.className="mode-badge"+(isManual?" manual":d.mode==="TAKIP"?" tracking":d.armed?" armed":d.mode==="RTL"||d.mode==="INIS"?" rtl":"");
+  mb.textContent=`● ${isManual?"MANUEL":d.mode}`;
+  document.getElementById("map-mode").textContent=d.mode;
+  document.getElementById("cam-mode-disp").textContent=d.mode;
+
+  // Arm buttons
+  document.getElementById("btn-arm").disabled=d.armed;
+  document.getElementById("btn-dis").disabled=!d.armed;
+
+  // Plate
+  const tp=document.getElementById("tgt-plate");
+  if(d.target_plate){ tp.className="tgt-plate"; tp.textContent=d.target_plate; }
+  else{ tp.className="tgt-plate none"; tp.textContent="— YOK —"; }
+  const dp=document.getElementById("det-plate"), dc=document.getElementById("det-conf");
+  if(d.detected_plate){
+    dp.className="det-plate"; dp.textContent=d.detected_plate; dc.textContent=`%${(d.plate_conf*100).toFixed(0)}`;
+    if(d.detected_plate!==lastDetected){ lastDetected=d.detected_plate; toast(`🎯 TESPİT: ${d.detected_plate}`,"success"); addHist(d.detected_plate,d.plate_conf,d.lat,d.lon); }
+  } else { dp.className="det-plate none"; dp.textContent="— —"; dc.textContent=""; lastDetected=null; }
+
+  // Camera overlay
+  document.getElementById("cam-track-ov").className="cam-track-ov"+(d.tracking?" tracking":d.detected_plate?" detected":"");
+
+  // Map trail
+  if(d.armed){ trail.push({lat:d.lat,lon:d.lon}); if(trail.length>300) trail.shift(); mapCenter={lat:d.lat,lon:d.lon}; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  KAMERA — RPi picamera2 MJPEG
+// ══════════════════════════════════════════════════════════════
+let camLive = false;
+let camRetryTimer = null;
+
+function getBaseUrl(){
+  const wsUrl = document.getElementById("ws-url").value.trim();
+  // ws://192.168.1.50:8765/ws  →  http://192.168.1.50:8765
+  return wsUrl.replace(/^ws(s)?:\/\//, "http$1://").replace(/\/ws$/, "");
+}
+
+function tryCamStream(){
+  const base = getBaseUrl();
+  const streamUrl = base + "/camera/stream";
+  const img = document.getElementById("cam-stream");
+  img.src = streamUrl + "?t=" + Date.now();
+  document.getElementById("cam-mode-tag").textContent = "LIVE STREAM";
+  document.getElementById("cam-src-lbl").textContent = "| CAM: picamera2 live";
+  addLog(new Date().toLocaleTimeString("tr-TR"),"INFO",`Kamera stream: ${streamUrl}`);
+}
+
+function camLoaded(){
+  camLive = true;
+  document.getElementById("cam-stream").style.display = "block";
+  document.getElementById("cam-canvas").style.display = "none";
+  document.getElementById("cam-offline").classList.add("hidden");
+  document.getElementById("cam-fps").textContent = "30";
+  document.getElementById("cam-res").textContent = "640×480";
+  addLog(new Date().toLocaleTimeString("tr-TR"),"SUCCESS","Kamera stream bağlandı (picamera2)");
+  toast("📷 Kamera stream aktif","success");
+  if(camRetryTimer){ clearTimeout(camRetryTimer); camRetryTimer=null; }
+}
+
+function camError(){
+  if(camLive) return;
+  // Gerçek kamera yok — demo moduna geç (canvas simülasyonu)
+  document.getElementById("cam-stream").style.display = "none";
+  document.getElementById("cam-canvas").style.display = "block";
+  document.getElementById("cam-offline").classList.add("hidden");
+  document.getElementById("cam-mode-tag").textContent = "DEMO SIM";
+  document.getElementById("cam-src-lbl").textContent = "| CAM: simülasyon";
+}
+
+function retryCam(){
+  document.getElementById("cam-offline").classList.add("hidden");
+  tryCamStream();
+  camRetryTimer = setTimeout(()=>{ if(!camLive){ document.getElementById("cam-offline").classList.remove("hidden"); }}, 4000);
+}
+
+// Canvas simülasyonu (kamera yokken)
+const vc=document.getElementById("cam-canvas"), vx=vc.getContext("2d");
+function resizeCam(){
+  const w=vc.parentElement.clientWidth, h=vc.parentElement.clientHeight;
+  vc.width=w; vc.height=h;
+}
+window.addEventListener("resize",resizeCam); resizeCam();
+
+(function vloop(){
+  simT += 0.02;
+  const W=vc.width, H=vc.height;
+  vx.fillStyle="#020810"; vx.fillRect(0,0,W,H);
+  // Noise
+  for(let i=0;i<200;i++){
+    vx.fillStyle=`rgba(0,212,255,${Math.random()*.03})`;
+    vx.fillRect(Math.random()*W, Math.random()*H, 1, 1);
+  }
+  // Scanline
+  const sy=(simT*60)%H, sg=vx.createLinearGradient(0,sy-4,0,sy+4);
+  sg.addColorStop(0,"rgba(0,212,255,0)"); sg.addColorStop(.5,"rgba(0,212,255,.1)"); sg.addColorStop(1,"rgba(0,212,255,0)");
+  vx.fillStyle=sg; vx.fillRect(0,sy-4,W,8);
+  // Grid overlay
+  vx.strokeStyle="rgba(0,212,255,.04)"; vx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ vx.beginPath(); vx.moveTo(x,0); vx.lineTo(x,H); vx.stroke(); }
+  for(let y=0;y<H;y+=40){ vx.beginPath(); vx.moveTo(0,y); vx.lineTo(W,y); vx.stroke(); }
+  // Tracking box
+  if(state.tracking || state.detected_plate){
+    const bx=W/2-65+Math.sin(simT)*6, by=H/2-36+Math.cos(simT*.8)*4, bw=130, bh=72;
+    const col=state.tracking?"#ffaa00":"#00ff88";
+    vx.strokeStyle=col; vx.lineWidth=1.5; vx.strokeRect(bx,by,bw,bh);
+    // Corner marks
+    const cs=12; vx.lineWidth=2.5;
+    [[bx,by,1,1],[bx+bw,by,-1,1],[bx,by+bh,1,-1],[bx+bw,by+bh,-1,-1]].forEach(([cx,cy,dx,dy])=>{
+      vx.beginPath(); vx.moveTo(cx+dx*cs,cy); vx.lineTo(cx,cy); vx.lineTo(cx,cy+dy*cs); vx.stroke();
+    });
+    // Plate label
+    vx.fillStyle="rgba(0,0,0,.6)"; vx.fillRect(bx+4,by+bh-18,bw-8,15);
+    vx.font=`bold 11px 'Share Tech Mono'`; vx.fillStyle=col;
+    vx.fillText(state.detected_plate||state.target_plate||"--------", bx+8, by+bh-7);
+    // Confidence bar
+    if(state.plate_conf>0){
+      vx.fillStyle="rgba(0,0,0,.5)"; vx.fillRect(bx,by-14,bw,10);
+      vx.fillStyle=col; vx.fillRect(bx,by-14,bw*state.plate_conf,10);
+    }
+  }
+  // Manual move indicator
+  if(manualMode && (manVx!==0||manVy!==0||manVz!==0)){
+    vx.save();
+    vx.strokeStyle="rgba(170,68,255,.6)"; vx.lineWidth=1.5;
+    const cx=W-50, cy=H/2;
+    // Arrow
+    const angle=Math.atan2(manVy,manVx), mag=Math.sqrt(manVx*manVx+manVy*manVy)*8;
+    if(mag>0){
+      vx.beginPath(); vx.moveTo(cx,cy); vx.lineTo(cx+Math.cos(angle)*mag,cy+Math.sin(angle)*mag); vx.stroke();
+    }
+    vx.restore();
+  }
+  requestAnimationFrame(vloop);
+})();
+
+// ══════════════════════════════════════════════════════════════
+//  HARİTA
+// ══════════════════════════════════════════════════════════════
+const mc=document.getElementById("map-canvas"), mx=mc.getContext("2d");
+function ll2xy(lat,lon,W,H){
+  const sc=850000*mapScale;
+  return{x:W/2+(lon-mapCenter.lon)*sc, y:H/2-(lat-mapCenter.lat)*sc};
+}
+function zoom(f){ mapScale=Math.max(.2,Math.min(20,mapScale*f)); }
+function resizeMap(){ mc.width=mc.parentElement.clientWidth; mc.height=mc.parentElement.clientHeight; }
+window.addEventListener("resize",resizeMap); resizeMap();
+
+function drawMap(){
+  const W=mc.width, H=mc.height;
+  mx.fillStyle="#030d16"; mx.fillRect(0,0,W,H);
+  mx.strokeStyle="#0a2535"; mx.lineWidth=1;
+  for(let x=W%25;x<W;x+=25){ mx.beginPath(); mx.moveTo(x,0); mx.lineTo(x,H); mx.stroke(); }
+  for(let y=H%25;y<H;y+=25){ mx.beginPath(); mx.moveTo(0,y); mx.lineTo(W,y); mx.stroke(); }
+  mx.strokeStyle="#0d2e40";
+  [40,80,120,160].forEach(r=>{ mx.beginPath(); mx.arc(W/2,H/2,r,0,Math.PI*2); mx.stroke(); });
+  if(trail.length>1){
+    mx.strokeStyle="rgba(0,212,255,.3)"; mx.lineWidth=1.5; mx.setLineDash([3,3]); mx.beginPath();
+    trail.forEach((p,i)=>{ const{x,y}=ll2xy(p.lat,p.lon,W,H); i?mx.lineTo(x,y):mx.moveTo(x,y); });
+    mx.stroke(); mx.setLineDash([]);
+  }
+  const{x:dx,y:dy}=ll2xy(state.lat,state.lon,W,H);
+  mx.save(); mx.translate(dx,dy); mx.rotate(state.heading*Math.PI/180);
+  const col=manualMode?"#aa44ff":state.tracking?"#ffaa00":"#00d4ff";
+  mx.strokeStyle=col; mx.fillStyle=col; mx.shadowColor=col; mx.shadowBlur=10; mx.lineWidth=1.5;
+  mx.beginPath(); mx.moveTo(0,-9); mx.lineTo(5,5); mx.lineTo(0,2); mx.lineTo(-5,5); mx.closePath(); mx.stroke();
+  mx.globalAlpha=.3; mx.fill(); mx.globalAlpha=1; mx.shadowBlur=0; mx.restore();
+  const pr=14+Math.sin(Date.now()*.003)*3;
+  mx.strokeStyle=col.replace("ff","66").replace("#","rgba(").split("").join("")+",.2)";
+  mx.strokeStyle=state.tracking?"rgba(255,170,0,.2)":manualMode?"rgba(170,68,255,.2)":"rgba(0,212,255,.2)";
+  mx.lineWidth=1; mx.beginPath(); mx.arc(dx,dy,pr,0,Math.PI*2); mx.stroke();
+}
+(function loop(){ drawMap(); requestAnimationFrame(loop); })();
+
+// ══════════════════════════════════════════════════════════════
+//  MANUEL KONTROL
+// ══════════════════════════════════════════════════════════════
+function setManualMode(on){
+  manualMode = on;
+  document.getElementById("mtog-auto").classList.toggle("active",!on);
+  document.getElementById("mtog-man").classList.toggle("active",on);
+  document.getElementById("man-status-lbl").textContent = on ? "AKTİF" : "KAPALI";
+  document.getElementById("man-status-lbl").style.color = on ? "var(--purple)" : "var(--text3)";
+  document.getElementById("man-dot").style.display = on ? "block" : "none";
+  document.getElementById("man-hdr").style.display = on ? "block" : "none";
+  if(!on){ manStop(); }
+  sendCmd("set_mode", {mode: on ? "MANUEL" : "OTOMATIK"});
+  addLog(new Date().toLocaleTimeString("tr-TR"), on?"WARN":"INFO", on?"Manuel mod aktif — klavye ve joystick kontrolü":"Otomatik moda geçildi");
+  toast(on?"🕹 Manuel mod aktif":"✅ Otomatik moda geçildi", on?"warn":"success");
+}
+
+function manPress(dir){
+  if(!manualMode){ toast("Önce Manuel modu aktif edin!","warn"); return; }
+  manActive = dir;
+  // Joystick butonunu vurgula
+  const ids = {forward:"jfwd",backward:"jback",left:"jleft",right:"jright",
+                yaw_left:"jyaw-l",yaw_right:"jyaw-r",up:"jup",down:"jdown"};
+  Object.values(ids).forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove("pressed"); });
+  const tid = ids[dir]; if(tid){ const el=document.getElementById(tid); if(el) el.classList.add("pressed"); }
+  // Komut gönder
+  manSendVel(dir);
+  // Hold: 100ms aralıkla tekrar gönder (PWM gibi)
+  if(manInterval) clearInterval(manInterval);
+  manInterval = setInterval(()=>manSendVel(dir), 100);
+}
+
+function manRelease(){
+  manActive = null;
+  if(manInterval){ clearInterval(manInterval); manInterval=null; }
+  manVx=0; manVy=0; manVz=0; manYawRate=0;
+  updateVecDisplay();
+  document.querySelectorAll(".jbtn,.jbtn-v").forEach(b=>b.classList.remove("pressed"));
+  sendCmd("manual_move", {vx:0,vy:0,vz:0,yaw_rate:0});
+}
+
+function manStop(){
+  manRelease();
+  sendCmd("manual_move", {vx:0,vy:0,vz:0,yaw_rate:0});
+  addLog(new Date().toLocaleTimeString("tr-TR"),"WARN","HOVER — tüm hızlar sıfırlandı");
+}
+
+function manSendVel(dir){
+  const spd = parseFloat(document.getElementById("spd-slider").value);
+  manVx=0; manVy=0; manVz=0; manYawRate=0;
+  if(dir==="forward")   manVx=+spd;
+  if(dir==="backward")  manVx=-spd;
+  if(dir==="right")     manVy=+spd;
+  if(dir==="left")      manVy=-spd;
+  if(dir==="up")        manVz=-spd*0.4;  // NED: yukarı = negatif
+  if(dir==="down")      manVz=+spd*0.4;
+  if(dir==="yaw_right") manYawRate=+20;
+  if(dir==="yaw_left")  manYawRate=-20;
+  sendCmd("manual_move", {vx:manVx, vy:manVy, vz:manVz, yaw_rate:manYawRate});
+  updateVecDisplay();
+}
+
+function updateSpd(){
+  manSpeed = parseFloat(document.getElementById("spd-slider").value);
+  document.getElementById("spd-val").textContent = manSpeed.toFixed(1)+" m/s";
+}
+
+function updateVecDisplay(){
+  document.getElementById("vec-vx").textContent=manVx.toFixed(1);
+  document.getElementById("vec-vy").textContent=manVy.toFixed(1);
+  document.getElementById("vec-vz").textContent=manVz.toFixed(1);
+  document.getElementById("vec-yaw").textContent=manYawRate===0?"---":(manYawRate>0?"↻ "+manYawRate:"↺ "+Math.abs(manYawRate));
+  // Vec canvas
+  const vc2=document.getElementById("vec-canvas"), vx2=vc2.getContext("2d");
+  const W=50,H=50,cx=25,cy=25,r=20;
+  vx2.clearRect(0,0,W,H);
+  vx2.strokeStyle="#0e3a52"; vx2.lineWidth=1;
+  vx2.beginPath(); vx2.arc(cx,cy,r,0,Math.PI*2); vx2.stroke();
+  vx2.beginPath(); vx2.moveTo(cx-r,cy); vx2.lineTo(cx+r,cy); vx2.stroke();
+  vx2.beginPath(); vx2.moveTo(cx,cy-r); vx2.lineTo(cx,cy+r); vx2.stroke();
+  if(manVx!==0||manVy!==0){
+    const mag=Math.sqrt(manVx*manVx+manVy*manVy), spd2=parseFloat(document.getElementById("spd-slider").value);
+    const nx=manVy/spd2, ny=-manVx/spd2;
+    const ex=cx+nx*r, ey=cy+ny*r;
+    vx2.strokeStyle="#aa44ff"; vx2.lineWidth=2;
+    vx2.beginPath(); vx2.moveTo(cx,cy); vx2.lineTo(ex,ey); vx2.stroke();
+    vx2.fillStyle="#aa44ff"; vx2.beginPath(); vx2.arc(ex,ey,3,0,Math.PI*2); vx2.fill();
+  }
+  if(manVz!==0){
+    vx2.fillStyle=manVz<0?"#00d4ff":"#ff3344";
+    vx2.font="10px 'Share Tech Mono'"; vx2.textAlign="right";
+    vx2.fillText(manVz<0?"▲":"▼",W-2,H-4);
+  }
+}
+
+// ── Klavye Kontrolü ─────────────────────────────────────────
+const KEY_MAP = {
+  "w":"forward","s":"backward","a":"left","d":"right",
+  "q":"yaw_left","e":"yaw_right","r":"up","f":"down",
+  "arrowup":"forward","arrowdown":"backward","arrowleft":"left","arrowright":"right"
+};
+const keysDown = new Set();
+document.addEventListener("keydown", e=>{
+  if(e.target.tagName==="INPUT") return;  // input odaktaysa yok say
+  const k=e.key.toLowerCase();
+  if(keysDown.has(k)) return;
+  keysDown.add(k);
+  if(k==="m"){ setManualMode(!manualMode); return; }
+  if(!manualMode) return;
+  const dir=KEY_MAP[k];
+  if(dir){ e.preventDefault(); manPress(dir); }
+});
+document.addEventListener("keyup", e=>{
+  const k=e.key.toLowerCase();
+  keysDown.delete(k);
+  const dir=KEY_MAP[k];
+  if(dir && manualMode) manRelease();
+});
+
+// ── Başlangıçta mtog-auto aktif ────────────────────────────
+document.getElementById("mtog-auto").classList.add("active");
+
+// ══════════════════════════════════════════════════════════════
+//  LOG
+// ══════════════════════════════════════════════════════════════
+function addLog(t,lvl,msg){
+  const s=document.getElementById("log-scroll");
+  const e=document.createElement("div"); e.className="log-entry";
+  e.innerHTML=`<span class="lt">${t}</span><span class="ll ${lvl}">${lvl}</span><span class="lm">${msg}</span>`;
+  s.appendChild(e);
+  while(s.children.length>80) s.removeChild(s.firstChild);
+  s.scrollTop=s.scrollHeight;
+}
+function clearLog(){ document.getElementById("log-scroll").innerHTML=""; }
+
+// ══════════════════════════════════════════════════════════════
+//  TESPİT GEÇMİŞİ
+// ══════════════════════════════════════════════════════════════
+function addHist(p,c,lat,lon){
+  const s=document.getElementById("hist-scroll"), it=document.createElement("div");
+  it.className="hist-item"; const t=new Date().toLocaleTimeString("tr-TR");
+  it.innerHTML=`<div class="hist-plate">${p}</div><div class="hist-meta">${t} — <span class="hist-conf">%${(c*100).toFixed(0)}</span> güven<br>${lat.toFixed(5)}, ${lon.toFixed(5)}</div>`;
+  s.insertBefore(it,s.firstChild);
+  while(s.children.length>20) s.removeChild(s.lastChild);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════════
+function toast(msg,type="info"){
+  const c=document.getElementById("toast-c"), t=document.createElement("div");
+  t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t);
+  setTimeout(()=>t.remove(), 4200);
+}
+
+// ── HELPERS ────────────────────────────────────────────────────
+function hdgDir(h){
+  return["K","KKD","KD","DKD","D","DGD","GD","GGD","G","GGB","GB","BGB","B","BKB","KB","KKB"][Math.round(h/22.5)%16];
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DEMO (WS yoksa simüle et)
+// ══════════════════════════════════════════════════════════════
+addLog(new Date().toLocaleTimeString("tr-TR"),"INFO","GCS v3.0 hazır — WebSocket bekleniyor");
+addLog(new Date().toLocaleTimeString("tr-TR"),"INFO","Manuel kontrol: [M] tuşu veya sağ panel");
+addLog(new Date().toLocaleTimeString("tr-TR"),"INFO","Kamera: sunucu bağlandığında /camera/stream aktif");
+
+setInterval(()=>{
+  if(ws && ws.readyState===1) return;
+  const t=Date.now()*.001;
+  handleTele({type:"telemetry",
+    lat:41.6781+Math.sin(t*.1)*.001, lon:27.435+Math.cos(t*.08)*.001,
+    alt:15+Math.sin(t*.5)*.4, heading:(t*15)%360, speed:4+Math.sin(t)*1.2,
+    battery:Math.max(20,95-t*.05),
+    mode:t%30<5?"TAKIP":"DEVRIYE", armed:true,
+    gps_fix:3, satellites:12, signal:85+Math.sin(t*.3)*10,
+    target_plate:"34ABC123",
+    detected_plate:t%30<5?"34ABC123":null,
+    plate_conf:t%30<5?.87+Math.random()*.1:0,
+    tracking:t%30<5, mission_time:Math.floor(t)
+  });
+}, 1000);
+</script>
+</body>
+</html>
